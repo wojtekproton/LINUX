@@ -5,6 +5,7 @@ MFA_SERIAL_FILE=".mfaserial"
 AWS_TOKEN_FILE=".awstoken"
 TMP_DIR="${HOME}/.aws/TMP"
 MFA_PROFILE="mfa"
+DURATION="900" #how long the token will work in seconds
 
 
 
@@ -37,7 +38,7 @@ promptForMFA(){
   done
 
   # Run the awscli command
-  _authenticationOutput=`aws sts get-session-token --duration-seconds 900 --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile default`
+  _authenticationOutput=`aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile default`
   
   # Save authentication to some file
   
