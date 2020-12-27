@@ -6,8 +6,12 @@ AWS_TOKEN_FILE=".awstoken"
 TMP_DIR="${HOME}/.aws/TMP"
 MFA_PROFILE="mfa"
 DURATION="900" #how long the token will work in seconds
-
-
+DEFAULT_PROFILE="default"
+if [ "$1" != "" ]; then
+	DEFAULT_PROFILE=$1
+	MFA_SERIAL_FILE=".mfaserial_$1"
+	AWS_TOKEN_FILE=".awstoken_$1"
+fi 
 
 # Validate that the configuration has been done before
 # If not, prompt the user to run that first
@@ -30,6 +34,7 @@ _MFA_SERIAL=`cat $TMP_DIR/$MFA_SERIAL_FILE`
 # Function for prompting for MFA token code
 promptForMFA(){
   while true; do
+	  echo "Trying authenticate for ${_MFA_SERIAL}"	
       read -p "Please input your 6 digit MFA token: " token
       case $token in
           [0-9][0-9][0-9][0-9][0-9][0-9] ) _MFA_TOKEN=$token; break;;
@@ -38,12 +43,13 @@ promptForMFA(){
   done
 
   # Run the awscli command
-  _authenticationOutput=`aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile default`
+  _authenticationOutput=`aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}`
   
   # Save authentication to some file
-  
+  echo "AWS cmd: " 
+  echo "aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}"
   echo $_authenticationOutput > $TMP_DIR/$AWS_TOKEN_FILE;
-  `export AWS_PROFILE=$MFA_PROFILE`
+  `export AWS_PROFILE=${MFA_PROFILE}`
 }
 
 # If token is present, retrieve it from file
@@ -80,7 +86,7 @@ _AWS_EXPIRATION=`echo ${_authenticationOutput} | jq -r '.Credentials.Expiration'
 # Writing new vaules to credentials file
 TMP_CRED_FILE="${HOME}/.aws/credentials_tmp"
 skip=0
-echo "# By Woku " > $TMP_CRED_FILE
+#echo "# By Woku " > $TMP_CRED_FILE
 
 while IFS= read -r line
 do
