@@ -5,7 +5,7 @@ MFA_SERIAL_FILE=".mfaserial"
 AWS_TOKEN_FILE=".awstoken"
 TMP_DIR="${HOME}/.aws/TMP"
 MFA_PROFILE="mfa"
-DURATION="900" #how long the token will work in seconds
+DURATION="1800" #how long the token will work in seconds
 DEFAULT_PROFILE="default"
 if [ "$1" != "" ]; then
 	DEFAULT_PROFILE=$1
@@ -46,8 +46,8 @@ promptForMFA(){
   _authenticationOutput=`aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}`
   
   # Save authentication to some file
-  echo "AWS cmd: " 
-  echo "aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}"
+  #echo "AWS cmd: " 
+  #echo "aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}"
   echo $_authenticationOutput > $TMP_DIR/$AWS_TOKEN_FILE;
   `export AWS_PROFILE=${MFA_PROFILE}`
 }
@@ -67,7 +67,11 @@ export AWS_SESSION_TOKEN=$_AWS_SESSION_TOKEN
     echo "Your last token has expired"
     promptForMFA
   else
-	echo "Token VALID"
+	StartDate=$(date -u -d "$_authExpiration" +"%s")
+	EndDate=$(date -u -d "$_nowTime" +"%s")
+	token_expire_in=`date -u -d "0 $StartDate sec - $EndDate sec" +"%H:%M:%S"`
+	echo "Token VALID for: ${token_expire_in}"
+
   fi
 else
   promptForMFA
