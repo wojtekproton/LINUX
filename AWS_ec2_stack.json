@@ -1,0 +1,16 @@
+{   "Resources":{
+      "EC2dlaMalejMai":{
+        "Type":"AWS::EC2::Instance",
+        "Properties":{
+            "InstanceType":"t2.micro","SecurityGroups":[{"Ref":"OpenForEveryone"}],"ImageId":"ami-0fc970315c2d38f01",
+            "Tags":[{"Key":"Name","Value":"#code16challenge"}],
+            "UserData":{"Fn::Base64":{"Fn::Join":["\n",[
+                "#!/bin/bash -xe","yum update -y","yum install httpd -y","echo '<H1>#code16challenge dla Malej Mai</H1>'>/var/www/html/index.html","service httpd start"]]}}}
+      },
+      "OpenForEveryone":{
+        "Type":"AWS::EC2::SecurityGroup",
+        "Properties":{"GroupDescription":"WWW access","SecurityGroupIngress":[{"IpProtocol":"tcp","FromPort":"80","ToPort":"80","CidrIp":"0.0.0.0/0"}]}
+      }
+    },  
+    "Outputs":{"Website":{"Value": {"Fn::Sub": "http://${EC2dlaMalejMai.PublicDnsName}"}}}
+}
