@@ -18,6 +18,11 @@ fi
 # Validate that the configuration has been done before
 # If not, prompt the user to run that first
 if [ ! -e $TMP_DIR/$MFA_SERIAL_FILE ]; then
+fi
+
+# Validate that the MFA has been done before
+# If not, prompt the user to run that first
+if [ ! -e $TMP_DIR/$MFA_SERIAL_FILE ]; then
   	echo "Configuration is missing"
 	mkdir -p ${TMP_DIR} 
 	# A loop to continue prompting the user for the device serial code until a non-empty string is returned
@@ -38,10 +43,11 @@ promptForMFA(){
   while true; do
 	  echo "Trying authenticate for ${_MFA_SERIAL}"	
       read -p "Please input your 6 digit MFA token: " token
-      case $token in
-          [0-9][0-9][0-9][0-9][0-9][0-9] ) _MFA_TOKEN=$token; break;;
-          * ) echo "Please enter a valid 6 digit pin." ;;
-      esac
+      #case $token in
+      #    [0-9][0-9][0-9][0-9][0-9][0-9] ) _MFA_TOKEN=$token; break;;
+      #    * ) echo "Please enter a valid 6 digit pin." ;;
+      #esac
+	  _MFA_TOKEN=$token
   done
 
   # Run the awscli command
