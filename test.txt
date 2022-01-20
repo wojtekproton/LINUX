@@ -1,1 +1,2 @@
-To jest wersja 1.0 w galęzi MAIN
+To jest wersja 1.1 w galęzi MAIN
+Zmiany
