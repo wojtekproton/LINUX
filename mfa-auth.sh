@@ -6,6 +6,7 @@
 MFA_SERIAL_FILE=".mfaserial"
 AWS_TOKEN_FILE=".awstoken"
 TMP_DIR="${HOME}/.aws/TMP"
+CREDENTIALS_FILE="${HOME}/.aws/credentials"
 MFA_PROFILE="mfa"
 DURATION="1800" #how long the token will work in seconds
 DEFAULT_PROFILE="default"
@@ -17,7 +18,8 @@ fi
 
 # Validate that the configuration has been done before
 # If not, prompt the user to run that first
-if [ ! -e $TMP_DIR/$MFA_SERIAL_FILE ]; then
+if [ ! -e $CREDENTIALS_FILE ]; then
+	echo "test"
 fi
 
 # Validate that the MFA has been done before
