@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyrights Wojtek Kubiak
-# Version 1.0
+# Version 1.0 (main continue to grow)
 # Default filename values - change this or add as environment values, depending on your own needs
 MFA_SERIAL_FILE=".mfaserial"
 AWS_TOKEN_FILE=".awstoken"
