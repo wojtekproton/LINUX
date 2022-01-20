@@ -1,14 +1,15 @@
 #!/bin/bash
 
 # Copyrights Wojtek Kubiak
-# Version 1.0 (main continue to grow)
+=======
+# Version 1.1 (dev and main continue to grow as well)
 # Default filename values - change this or add as environment values, depending on your own needs
 MFA_SERIAL_FILE=".mfaserial"
 AWS_TOKEN_FILE=".awstoken"
 TMP_DIR="${HOME}/.aws/TMP"
 CREDENTIALS_FILE="${HOME}/.aws/credentials"
 MFA_PROFILE="mfa"
-DURATION="1800" #how long the token will work in seconds
+DURATION="900" #how long the token will work in seconds
 DEFAULT_PROFILE="default"
 if [ "$1" != "" ]; then
 	DEFAULT_PROFILE=$1
@@ -19,7 +20,8 @@ fi
 # Validate that the configuration has been done before
 # If not, prompt the user to run that first
 if [ ! -e $CREDENTIALS_FILE ]; then
-	echo "test"
+	echo "First time configuration"
+	`aws configure`
 fi
 
 # Validate that the MFA has been done before
@@ -45,10 +47,10 @@ promptForMFA(){
   while true; do
 	  echo "Trying authenticate for ${_MFA_SERIAL}"	
       read -p "Please input your 6 digit MFA token: " token
-      #case $token in
-      #    [0-9][0-9][0-9][0-9][0-9][0-9] ) _MFA_TOKEN=$token; break;;
-      #    * ) echo "Please enter a valid 6 digit pin." ;;
-      #esac
+      case $token in
+          [0-9][0-9][0-9][0-9][0-9][0-9] ) _MFA_TOKEN=$token; break;;
+          * ) echo "Please enter a valid 6 digit pin." ;;
+      esac
 	  _MFA_TOKEN=$token
   done
 
@@ -56,8 +58,9 @@ promptForMFA(){
   _authenticationOutput=`aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}`
   
   # Save authentication to some file
-  #echo "AWS cmd: " 
-  #echo "aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}"
+  echo "AWS cmd: " 
+  echo "aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}"
+  
   echo $_authenticationOutput > $TMP_DIR/$AWS_TOKEN_FILE;
   `export AWS_PROFILE=${MFA_PROFILE}`
 }
@@ -90,40 +93,38 @@ fi
 # "Return" the values to the calling script.
 # There are a few ways to "return", for example writing to file
 # Here, we assume that this script is "sourced" - see more on "sourcing" here: https://bash.cyberciti.biz/guide/Source_command
-_AWS_ACCESS_KEY_ID=`echo ${_authenticationOutput} | jq -r '.Credentials.AccessKeyId'`
-_AWS_SECRET_ACCESS_KEY=`echo ${_authenticationOutput} | jq -r '.Credentials.SecretAccessKey'`
-_AWS_SESSION_TOKEN=`echo ${_authenticationOutput} | jq -r '.Credentials.SessionToken'`
-_AWS_EXPIRATION=`echo ${_authenticationOutput} | jq -r '.Credentials.Expiration'`
+#_AWS_ACCESS_KEY_ID=`echo ${_authenticationOutput} | jq -r '.Credentials.AccessKeyId'`
+#_AWS_SECRET_ACCESS_KEY=`echo ${_authenticationOutput} | jq -r '.Credentials.SecretAccessKey'`
+#_AWS_SESSION_TOKEN=`echo ${_authenticationOutput} | jq -r '.Credentials.SessionToken'`
+#_AWS_EXPIRATION=`echo ${_authenticationOutput} | jq -r '.Credentials.Expiration'`
 
 
 
 # Writing new vaules to credentials file
-TMP_CRED_FILE="${HOME}/.aws/credentials_tmp"
-skip=0
+#TMP_CRED_FILE="${HOME}/.aws/credentials_tmp"
+#skip=0
 #echo "# By Woku " > $TMP_CRED_FILE
 
-while IFS= read -r line
-do
-	if [[ $skip == 0 ]]; then
-		echo "$line" >> $TMP_CRED_FILE
-	else
-		# waiting for blank line to continue coping from old credentials to tmp
-		if [[ -z $line ]]; then
-			echo "$line" >> $TMP_CRED_FILE
-			skip=0
-		fi	
-	fi
-	if [[ $line == "[$MFA_PROFILE]" ]]; then
-		echo "aws_access_key_id =" $_AWS_ACCESS_KEY_ID >> $TMP_CRED_FILE
-		echo "aws_secret_access_key =" $_AWS_SECRET_ACCESS_KEY >> $TMP_CRED_FILE
-		echo "aws_session_token =" $_AWS_SESSION_TOKEN >> $TMP_CRED_FILE
-		echo "aws_expiration =" $_AWS_EXPIRATION >> $TMP_CRED_FILE
-		
-		# Skip next rows until blank line appears
-		skip=1
-	fi
-	
-done < "${HOME}/.aws/credentials"
+#while IFS= read -r line
+#do
+#	if [[ $skip == 0 ]]; then
+#		echo "$line" >> $TMP_CRED_FILE
+#	else
+#		# waiting for blank line to continue coping from old credentials to tmp
+#		if [[ -z $line ]]; then
+#			echo "$line" >> $TMP_CRED_FILE
+#			skip=0
+#		fi	
+#	fi
+#	if [[ $line == "[$MFA_PROFILE]" ]]; then
+#		echo "aws_access_key_id =" $_AWS_ACCESS_KEY_ID >> $TMP_CRED_FILE
+#		echo "aws_secret_access_key =" $_AWS_SECRET_ACCESS_KEY >> $TMP_CRED_FILE
+#		echo "aws_session_token =" $_AWS_SESSION_TOKEN >> $TMP_CRED_FILE
+#		echo "aws_expiration =" $_AWS_EXPIRATION >> $TMP_CRED_FILE
+#		# Skip next rows until blank line appears
+#		skip=1
+#	fi
+#done < "${HOME}/.aws/credentials"
 
-mv ${HOME}/.aws/credentials ${HOME}/.aws/TMP/.credentials_old
-mv $TMP_CRED_FILE ${HOME}/.aws/credentials
+#mv ${HOME}/.aws/credentials ${HOME}/.aws/TMP/.credentials_old
+#mv $TMP_CRED_FILE ${HOME}/.aws/credentials
