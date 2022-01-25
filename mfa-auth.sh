@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Copyrights Wojtek Kubiak
-=======
 # Version 1.1 (dev and main continue to grow as well)
 # Default filename values - change this or add as environment values, depending on your own needs
 MFA_SERIAL_FILE=".mfaserial"
@@ -61,30 +60,33 @@ promptForMFA(){
   echo "AWS cmd: " 
   echo "aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}"
   
-  echo $_authenticationOutput > $TMP_DIR/$AWS_TOKEN_FILE;
+ # echo $_authenticationOutput > $TMP_DIR/$AWS_TOKEN_FILE;
   `export AWS_PROFILE=${MFA_PROFILE}`
 }
 
 # If token is present, retrieve it from file
 # Else invoke the prompt for mfa function
 if [ -e $TMP_DIR/$AWS_TOKEN_FILE ]; then
+	echo "Token exists in location $TMP_DIR/$AWS_TOKEN_FILE. Retreving the TOKEN"
   _authenticationOutput=`cat $TMP_DIR/$AWS_TOKEN_FILE`
   _authExpiration=`echo $_authenticationOutput | jq -r '.Credentials.Expiration'`
   _nowTime=`date -u +'%Y-%m-%dT%H:%M:%SZ'`
   
   # Retrieving is not sufficient, since we are not sure if this token has expired
-export AWS_SESSION_TOKEN=$_AWS_SESSION_TOKEN
+  export AWS_SESSION_TOKEN=$_authenticationOutput
+  echo "Token: $AWS_SESSION_TOKEN"
+  echo "authExpiration: $_authExpiration"
   # Check for the expiration value against the current time
   # If expired, invoke the prompt for mfa function
-  if [ "$_authExpiration" \< "$_nowTime" ]; then
+  if [ "$_authExpiration" /< "$_nowTime" ]; then
     echo "Your last token has expired"
     promptForMFA
-  else
-	StartDate=$(date -u -d "$_authExpiration" +"%s")
-	EndDate=$(date -u -d "$_nowTime" +"%s")
-	token_expire_in=`date -u -d "0 $StartDate sec - $EndDate sec" +"%H:%M:%S"`
-	echo "Token VALID for: ${token_expire_in}"
-
+#  else
+#	StartDate=$(date -u -d "$_authExpiration" +"%s")
+#	EndDate=$(date -u -d "$_nowTime" +"%s")
+#	token_expire_in=`date -u -d "0 $StartDate sec - $EndDate sec" +"%H:%M:%S"`
+#	echo "Token VALID for: ${token_expire_in}"
+#
   fi
 else
   promptForMFA
