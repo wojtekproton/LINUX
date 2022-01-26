@@ -2,7 +2,7 @@
 
 # Default filename values - change this or add as environment values, depending on your own needs
 MFA_SERIAL_FILE=".mfaserial"
-TMP_DIR="${HOME}/.aws/TMP"
+TMP_DIR="${HOME}/.aws/CFG"
 
 # For variable value of $TMP_DIR, you can either set this as a path that is .gitignored in this project, for saving this developer's context for this project, or a absolute path from root as a system configuration.  wrap this script with some other environment variable injected for this value
 
