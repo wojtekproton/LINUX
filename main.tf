@@ -21,12 +21,15 @@ provider "aws" {
 module "ec2" {
   source = "./modules"
   name = "HelloWorld"
-  region = "eu-west-1"
+  providers = {
+    aws = aws
+  }
 }
 
-module "ec2" {
-  provider = aws.Frankfurt
+module "ec2_Frankfurt" {
   source = "./modules"
   name = "HelloWorld_in_Frankfurt"
-  region = "eu-central-1"
+  providers = {
+    aws = aws.Frankfurt
+  }
 }
