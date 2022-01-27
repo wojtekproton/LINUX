@@ -21,8 +21,13 @@ data "aws_subnet_ids" "destination" {
   }
 }
 
-data "aws_subnet_ids" "destination_frankfurt" {
-  vpc_id = data.aws_vpc.default.id
+data "aws_vpc" "default_Frankfurt" {
+  provider      = aws.frankfurt
+  default       = true
+} 
+
+data "aws_subnet_ids" "destination_Frankfurt" {
+  vpc_id = data.aws_vpc.default_Frankfurt.id
   filter {
       name = "availability-zone"
       values = ["eu-central-1a"]
@@ -42,6 +47,19 @@ data "aws_ami" "ubuntu" {
     owners = ["099720109477"]
 }
 
+data "aws_ami" "ubuntu_Frankfurt" {
+    provider      = aws.frankfurt
+    most_recent = true
+    filter {
+        name   = "name"
+        values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
+    }
+    filter {
+        name = "virtualization-type"
+        values = ["hvm"]
+    }
+    owners = ["099720109477"]
+}
 resource "aws_instance" "web" {
   for_each      = data.aws_subnet_ids.destination.ids
   ami           = data.aws_ami.ubuntu.id
@@ -54,9 +72,9 @@ resource "aws_instance" "web" {
 }
 
 resource "aws_instance" "web-in-Frankfurt" {
-  provider      = "aws.frankfurt" 
-  for_each      = data.aws_subnet_ids.destination_frankfurt.ids
-  ami           = data.aws_ami.ubuntu.id
+  provider      = aws.frankfurt
+  for_each      = data.aws_subnet_ids.destination_Frankfurt.ids
+  ami           = data.aws_ami.ubuntu_Frankfurt.id
   instance_type = "t3.micro"
   subnet_id = each.value
   associate_public_ip_address = true
