@@ -21,9 +21,16 @@ provider "aws" {
 module "ec2" {
   source = "./modules"
   name = "HelloWorld"
-  providers = {
-    aws = aws
-  }
+}
+
+module "ec2" {
+  source = "./modules"
+  name = "HelloWorld"
+}
+
+module "ec2" {
+  source = "./modules"
+  name = "HelloWorld"
 }
 
 module "ec2_Frankfurt" {
