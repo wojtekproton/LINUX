@@ -27,12 +27,6 @@ module "ec2" {
   source = "./modules"
   name   = "HelloWorld"
 }
-
-module "ec2" {
-  source = "./modules"
-  name   = "HelloWorld"
-}
-
 module "ec2_Frankfurt" {
   source = "./modules"
   name   = "HelloWorld_in_Frankfurt"
