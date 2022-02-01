@@ -53,8 +53,10 @@ else
 	done
 	# Run the awscli command and save results in var
 	_authenticationOutput=`aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}`  
-	# Save authentication to some file
-	echo $_authenticationOutput > $TMP_DIR/$AWS_TOKEN_FILE;
+	# Save authentication to some file when token was generated
+	if [ ${#_authenticationOutput} -gt 10 ]; then
+		echo $_authenticationOutput > $TMP_DIR/$AWS_TOKEN_FILE;
+	fi
 	}
 
 	calculate_seconds_left() {
@@ -126,7 +128,7 @@ else
 	# If token is present, retrieve it from file
 	# Else invoke the prompt for mfa function
 	if [ -e $TMP_DIR/$AWS_TOKEN_FILE ]; then
-		#echo "Token exists in location $TMP_DIR/$AWS_TOKEN_FILE. Retreving the TOKEN"
+  #echo "[DEBUG] Token exists in location $TMP_DIR/$AWS_TOKEN_FILE. Retreving the TOKEN"
 	_authenticationOutput=`cat $TMP_DIR/$AWS_TOKEN_FILE`
 	
 	calculate_seconds_left
