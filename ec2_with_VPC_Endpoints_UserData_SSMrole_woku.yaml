@@ -1,0 +1,460 @@
+Parameters:
+  NameOfService:
+    Description: "The name of the service this stack is to be used for."
+    Type: String
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access into the server
+    Type: AWS::EC2::KeyPair::KeyName
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 172.18.0.0/16
+  PublicSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    Default: 172.18.10.0/24
+  PublicSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
+    Type: String
+    Default: 172.18.11.0/24
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+    Type: String
+    Default: 172.18.200.0/24
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
+    Type: String
+    Default: 172.18.210.0/24
+  SafePublicIp:
+    Description: Please enter the IP from you can establish safe connection
+    Type: String
+    Default: 77.32.245.80/28
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.small
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - c5a.large
+    ConstraintDescription: must be a valid EC2 instance type.
+  InstanceHDDSize:
+    Description: EC2 instance HDD Size
+    Type: Number
+    Default: 20
+Mappings:
+  RegionMap:
+    eu-west-1:
+      AMI: ami-05cd35b907b4ffe77
+    eu-central-1:
+      AMI: ami-058e6df85cfc7760b
+    eu-north-1:
+      AMI: ami-06bfd6343550d4a29
+    eu-west-3:
+      AMI: ami-0d3c032f5934e1b41
+      
+Resources: 
+  VPC1:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Join [ "", [ !Ref NameOfService, " - ", "VPC" ] ]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Join [ "", [ !Ref NameOfService, " - ", "IGW" ] ]
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC1
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${NameOfService} - Public Subnet (AZ1)
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${NameOfService} - Public Subnet (AZ2)
+
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${NameOfService} - Private Subnet (AZ1)
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${NameOfService} - Private Subnet (AZ2)
+
+### PUBLIC ROUTE TABLE ###
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC1
+      Tags:
+        - Key: Name
+          Value: !Sub ${NameOfService} Public Routes
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+### PRIVATE ROUTE TABLE ###
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC1
+      Tags:
+        - Key: Name
+          Value: !Sub ${NameOfService} Private Routes
+ 
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+ 
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+###### VPC Endpoints ########
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - "s3:GetObject"
+            Resource:
+              - "*"  
+      RouteTableIds: 
+        - !Ref PrivateRouteTable
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.s3"
+      VpcId: !Ref VPC1
+
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds: 
+        - !GetAtt VPC1.DefaultSecurityGroup
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssm"
+      SubnetIds: 
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      VpcEndpointType: 'Interface'
+      VpcId: !Ref VPC1
+
+  SSMMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds: 
+        - !GetAtt VPC1.DefaultSecurityGroup
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ssmmessages"
+      SubnetIds: 
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      VpcEndpointType: 'Interface'
+      VpcId: !Ref VPC1
+
+  EC2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      PrivateDnsEnabled: true
+      SecurityGroupIds: 
+        - !GetAtt VPC1.DefaultSecurityGroup
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2messages"
+      SubnetIds: 
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      VpcEndpointType: 'Interface'
+      VpcId: !Ref VPC1
+
+###### INSTANCES #######
+  AmazonSSMRoleForInstancesQuickSetup:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  Ec2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      InstanceProfileName: woku-ec2-instance-profile
+      Path: /
+      Roles: 
+        - !Ref AmazonSSMRoleForInstancesQuickSetup
+
+### EC2 Private ###
+  Ec2Instance1:
+    Type: 'AWS::EC2::Instance'
+    DependsOn: S3Endpoint
+    Properties:
+      InstanceType: !Ref InstanceType
+      # instead of just "ami-05cd35b907b4ffe77" specifig for current region
+      ImageId:
+        Fn::FindInMap:
+        - RegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags: 
+        - Key: "Name"
+          # in yaml full format
+          Value: !Join [ "", [ !Ref NameOfService, " - ", "EC2 Private 1" ] ]
+
+        - Key: "DoNotStop"
+          # in yaml short format of 'flow' style
+          Value: !Join [ "" , [ "EC2 Instance for ",!Ref AWS::Region," in flow style by WoKu"]]
+
+        - Key: "Comment 2"
+          # in yaml short format of 'block' style
+          Value: !Join 
+            - ""
+            - - "EC2 Instance for "
+              - !Ref AWS::Region
+              - " in block style by WoKu"
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      UserData:
+        'Fn::Base64': 
+          !Sub |
+            #!/bin/bash -xe            
+            cd /tmp
+            yum install -y https://s3.eu-west-1.amazonaws.com/amazon-ssm-eu-west-1/latest/linux_amd64/amazon-ssm-agent.rpm
+            systemctl enable amazon-ssm-agent
+            systemctl start amazon-ssm-agent
+            # Install stress tools
+            amazon-linux-extras install epel -y
+            yum install stress -y  
+            yum install htop -y  
+            yum install httpd
+            echo "Wojtek PRV instance webpage" > /var/www/html/index.html
+            service httpd start
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            DeleteOnTermination: 'true'
+            VolumeSize: !Ref InstanceHDDSize
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: "false"
+          SubnetId: !Ref PrivateSubnet1
+          DeviceIndex: '0'
+          GroupSet: 
+            - !Ref SecurityGroup1
+
+### EC2 Public ###
+  Ec2Instance2:
+    Type: 'AWS::EC2::Instance'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M    
+    Metadata: 
+      AWS::CloudFormation::Init:
+        configSets:
+          InstallAndRun:
+          - phpinstall
+        phpinstall: 
+          packages: 
+            yum:
+              httpd: []
+              php: []
+              htop: []
+          files: 
+            /var/www/html/index.php:
+              content: !Sub 
+                <?php print "Hello world Wojtek was here!"; ?>
+              mode: '000600'
+              owner: apache
+              group: apache
+          services: 
+            sysvinit:
+              httpd:
+                enabled: 'true'
+                ensureRunning: 'true'
+    Properties:
+      InstanceType: !Ref InstanceType 
+      ImageId:
+        Fn::FindInMap:
+        - RegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags: 
+        - Key: "Name"
+          Value: !Join [ "", [ !Ref NameOfService, " - ", "EC2 Public 1" ] ]
+        - Key: "DoNotStop"
+          Value: ""
+        - Key: "Project"
+          Value: !Ref NameOfService
+      KeyName: !Ref KeyName
+      IamInstanceProfile: !Ref Ec2InstanceProfile
+      UserData:
+        'Fn::Base64': 
+          !Sub |
+            #!/bin/bash
+            cd /tmp
+            yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+            systemctl enable amazon-ssm-agent
+            systemctl start amazon-ssm-agent       
+            # Install stress tools
+            amazon-linux-extras install epel -y
+            yum install stress -y  
+            # Ensure AWS CFN Bootstrap is the latest
+            yum install -y aws-cfn-bootstrap
+            # Install the files and packages from the metadata
+            /opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource Ec2Instance2 --configset InstallAndRun --region ${AWS::Region}
+            # Install deamon to listen for metadata changes
+            #
+            # Check if instance is sending signal back to creation policy after the stack successfull
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource Ec2Instance2 --region ${AWS::Region}
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            DeleteOnTermination: 'true'
+            VolumeSize: !Ref InstanceHDDSize
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: "true"
+          SubnetId: !Ref PublicSubnet1
+          DeviceIndex: '0'
+          GroupSet: 
+            - !Ref SecurityGroup2
+
+### Security ###
+  SecurityGroup1:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Enable SSH access via port 22 from VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: !Ref VpcCIDR
+        - IpProtocol: tcp
+          FromPort: "443"
+          ToPort: "443"
+          CidrIp: !Ref VpcCIDR
+   #     - SourceSecurityGroupId: !GetAtt VPC1.DefaultSecurityGroup
+   #       IpProtocol: tcp
+   #       FromPort: "443"
+   #       ToPort: "443"
+      VpcId: !Ref VPC1
+      Tags: 
+        - Key: "Name"
+          Value: !Join [ "", [ !Ref NameOfService, " - ", "Security Group 1" ] ]  
+
+  SecurityGroup2:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Enable SSH access via port 22 from Cybercom and 80, 443 from Internet
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: !Ref SafePublicIp
+        - IpProtocol: tcp
+          FromPort: "80"
+          ToPort: "80"
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: "443"
+          ToPort: "443"
+          CidrIp: 0.0.0.0/0
+      VpcId: !Ref VPC1
+      Tags: 
+        - Key: "Name"
+          Value: !Join [ "", [ !Ref NameOfService, " - ", "Security Group 2" ] ]  
+
+  # For SSM traffic from VPC
+  DefaultSecurityGroup:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !GetAtt VPC1.DefaultSecurityGroup
+      IpProtocol: tcp
+      FromPort: "443"
+      ToPort: "443"
+      CidrIp: !Ref VpcCIDR
+
+Outputs:
+  VPC:
+    Description: A reference to the created VPC
+    Value: !Ref VPC1
+  PublicIp:
+    Value: !GetAtt
+      - Ec2Instance2
+      - PublicIp
+  Website:
+    Description: Public DNS for ec2 
+    Value: !Sub 'http://${Ec2Instance2.PublicDnsName}'

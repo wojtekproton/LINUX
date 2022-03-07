@@ -14,7 +14,13 @@ if [ "$1" != "" ]; then
 	DEFAULT_PROFILE=$1
 	MFA_SERIAL_FILE=".mfaserial_$1"
 	AWS_TOKEN_FILE=".awstoken_$1"
+	MFA_PROFILE="mfa_$1"
 fi 
+
+#echo "[DEBUG] DEFAULT_PROFILE = $DEFAULT_PROFILE"
+#echo "[DEBUG] MFA_SERIAL_FILE = $MFA_SERIAL_FILE"
+#echo "[DEBUG] AWS_TOKEN_FILE = $AWS_TOKEN_FILE"
+#echo "[DEBUG] MFA_PROFILE = $MFA_PROFILE"
 
 # Validate that the configuration has been done before
 # If not, prompt the user to run that first
@@ -53,9 +59,13 @@ else
 	done
 	# Run the awscli command and save results in var
 	_authenticationOutput=`aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}`  
+#echo "[DEBUG] #### COMMAND ####"
+#echo "[DEBUG] aws sts get-session-token --duration-seconds ${DURATION} --serial-number ${_MFA_SERIAL} --token-code ${_MFA_TOKEN} --profile ${DEFAULT_PROFILE}"
 	# Save authentication to some file when token was generated
 	if [ ${#_authenticationOutput} -gt 10 ]; then
 		echo $_authenticationOutput > $TMP_DIR/$AWS_TOKEN_FILE;
+#echo "[DEBUG] authenticationOutput: $_authenticationOutput"
+#echo "[DEBUG] Token file '$TMP_DIR/$AWS_TOKEN_FILE' updated succesfully !!!"
 	fi
 	}
 
@@ -67,6 +77,8 @@ else
 		t1=$(date -j -f "%Y-%m-%dT%H:%M:%S+00:00" "$_authExpiration" "+%s")
 		t2=$(date -j -f "%Y-%m-%dT%H:%M:%S+00:00" "$_nowTime" "+%s")
 		seconds_left=$((${t1} - ${t2}))
+	#seconds_left=1000
+
 	}
 
 	updateCredentialsFile() {
@@ -78,6 +90,10 @@ else
 		_AWS_SESSION_TOKEN=`echo ${_authenticationOutput} | jq -r '.Credentials.SessionToken'`
 		_AWS_EXPIRATION=`echo ${_authenticationOutput} | jq -r '.Credentials.Expiration'`
 
+#echo "[DEBUG] _AWS_ACCESS_KEY_ID=$_AWS_ACCESS_KEY_ID"
+#echo "[DEBUG] _AWS_SECRET_ACCESS_KEY=$_AWS_SECRET_ACCESS_KEY"
+#echo "[DEBUG] _AWS_SESSION_TOKEN=$_AWS_SESSION_TOKEN"
+#echo "[DEBUG] _AWS_EXPIRATION=$_AWS_EXPIRATION"
 
 		# Checking if $MFA_PROFILE exists in credential file
 		isInFile=$(cat ${HOME}/.aws/credentials | grep -c "$MFA_PROFILE")
@@ -110,6 +126,7 @@ else
 				echo "aws_secret_access_key =" $_AWS_SECRET_ACCESS_KEY >> $TMP_CRED_FILE
 				echo "aws_session_token =" $_AWS_SESSION_TOKEN >> $TMP_CRED_FILE
 				echo "aws_expiration =" $_AWS_EXPIRATION >> $TMP_CRED_FILE
+#echo "[DEBUG] MFA_PROFILE = $MFA_PROFILE updated in 'credentials' file succesfully !!!"
 				# Skip next rows until blank line appears
 				skip=1
 			fi
@@ -128,23 +145,23 @@ else
 	# If token is present, retrieve it from file
 	# Else invoke the prompt for mfa function
 	if [ -e $TMP_DIR/$AWS_TOKEN_FILE ]; then
-  #echo "[DEBUG] Token exists in location $TMP_DIR/$AWS_TOKEN_FILE. Retreving the TOKEN"
-	_authenticationOutput=`cat $TMP_DIR/$AWS_TOKEN_FILE`
-	
-	calculate_seconds_left
-	# Check for the expiration value against the current time
-	# If expired, invoke the prompt for mfa function
-	if [[ $seconds_left -lt 0 ]]; then
-		echo "Your last token has expired"
+#echo "[DEBUG] Token exists in location $TMP_DIR/$AWS_TOKEN_FILE. Retreving the TOKEN"
+		_authenticationOutput=`cat $TMP_DIR/$AWS_TOKEN_FILE`
+		calculate_seconds_left
+		# Check for the expiration value against the current time
+		# If expired, invoke the prompt for mfa function
+		if [[ $seconds_left -lt 0 ]]; then
+			echo "Your last token has expired"
+			promptForMFA
+			updateCredentialsFile
+		else
+			# Nothing to do - token is VALID
+			echo "Token valid for next seconds: " $seconds_left
+		fi
+	else
+	echo "[DEBUG] NO TOKEN FILE in location $TMP_DIR/$AWS_TOKEN_FILE"
 		promptForMFA
 		updateCredentialsFile
-	else
-		# Nothing to do - token is VALID
-		echo "Token valid for next seconds: " $seconds_left
-	fi
-	else
-	promptForMFA
-	updateCredentialsFile
 	fi
 fi
 
