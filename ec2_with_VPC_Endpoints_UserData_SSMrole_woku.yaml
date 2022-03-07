@@ -21,10 +21,10 @@ Parameters:
     Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
     Type: String
     Default: 172.18.200.0/24
-  PrivateSubnet2CIDR:
+  PrivateSubnet3CIDR:
     Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
     Type: String
-    Default: 172.18.210.0/24
+    Default: 172.18.123.0/24
   SafePublicIp:
     Description: Please enter the IP from you can establish safe connection
     Type: String
@@ -124,6 +124,17 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${NameOfService} - Private Subnet (AZ2)
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC1
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${NameOfService} - FIREWALL Subnet (AZ1)
 
 ### PUBLIC ROUTE TABLE ###
   PublicRouteTable:
